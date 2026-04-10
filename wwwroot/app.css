@@ -1,0 +1,318 @@
+/* ── Reset / Base ─────────────────────────────────────── */
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
+html, body {
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+    font-family: 'Helvetica Neue', Helvetica, 'PingFang SC', 'Microsoft YaHei', Arial, sans-serif;
+    background: linear-gradient(135deg, #fff1f3 0%, #fce8f1 50%, #f0e8ff 100%);
+    color: #222;
+}
+
+a {
+    color: #fb7299;
+    text-decoration: none;
+}
+a:hover {
+    text-decoration: underline;
+}
+
+/* ── Full-page wrapper ────────────────────────────────── */
+.page-full {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 1rem;
+}
+
+/* ── Main card ────────────────────────────────────────── */
+.like-app {
+    width: 100%;
+    max-width: 680px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+}
+
+.like-card {
+    width: 100%;
+    background: #fff;
+    border-radius: 20px;
+    box-shadow: 0 8px 40px rgba(251, 114, 153, 0.18), 0 2px 8px rgba(0,0,0,0.06);
+    padding: 2.5rem 2.5rem 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.6rem;
+}
+
+/* ── Header ───────────────────────────────────────────── */
+.like-header {
+    text-align: center;
+}
+
+.bili-logo {
+    display: inline-block;
+    color: #fb7299;
+    margin-bottom: .4rem;
+}
+
+.like-header h1 {
+    margin: 0 0 .4rem;
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: #fb7299;
+    letter-spacing: .02em;
+}
+
+.subtitle {
+    margin: 0;
+    font-size: .95rem;
+    color: #888;
+}
+
+/* ── Form ─────────────────────────────────────────────── */
+.like-form {
+    display: flex;
+    flex-direction: column;
+    gap: .8rem;
+}
+
+.input-group-custom {
+    display: flex;
+    align-items: center;
+    border: 2px solid #e8e8e8;
+    border-radius: 12px;
+    overflow: hidden;
+    transition: border-color .2s;
+}
+.input-group-custom:focus-within {
+    border-color: #fb7299;
+    box-shadow: 0 0 0 3px rgba(251, 114, 153, .18);
+}
+
+.bv-prefix {
+    padding: 0 .9rem;
+    background: #fff4f7;
+    color: #fb7299;
+    font-weight: 700;
+    font-size: 1.1rem;
+    height: 52px;
+    display: flex;
+    align-items: center;
+    border-right: 2px solid #f0c4d0;
+    user-select: none;
+    letter-spacing: .04em;
+}
+
+.bv-input {
+    flex: 1;
+    border: none;
+    outline: none;
+    padding: 0 1rem;
+    height: 52px;
+    font-size: 1.05rem;
+    color: #333;
+    background: transparent;
+    font-family: 'Consolas', 'Courier New', monospace;
+    letter-spacing: .06em;
+}
+.bv-input::placeholder {
+    color: #bbb;
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    letter-spacing: normal;
+    font-size: .95rem;
+}
+.bv-input.input-invalid {
+    background: #fff5f5;
+}
+.bv-input:disabled {
+    background: #fafafa;
+    cursor: not-allowed;
+}
+
+.validation-hint {
+    margin: -.2rem 0 0;
+    font-size: .85rem;
+    color: #e50000;
+}
+
+/* Like Button */
+.like-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: .5rem;
+    width: 100%;
+    height: 52px;
+    border: none;
+    border-radius: 12px;
+    background: linear-gradient(90deg, #fb7299 0%, #f45078 100%);
+    color: #fff;
+    font-size: 1.1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity .2s, transform .1s, box-shadow .2s;
+    box-shadow: 0 4px 16px rgba(251, 114, 153, .35);
+    letter-spacing: .04em;
+}
+.like-btn:hover:not(:disabled) {
+    opacity: .93;
+    box-shadow: 0 6px 22px rgba(251, 114, 153, .45);
+}
+.like-btn:active:not(:disabled) {
+    transform: scale(.98);
+}
+.like-btn:disabled {
+    opacity: .55;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+.like-btn.loading {
+    background: linear-gradient(90deg, #f0a5bb 0%, #e8809a 100%);
+}
+
+.thumb-icon {
+    font-size: 1.3rem;
+    line-height: 1;
+}
+
+/* Spinner */
+.spinner {
+    display: inline-block;
+    width: 18px;
+    height: 18px;
+    border: 2.5px solid rgba(255,255,255,.4);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin .7s linear infinite;
+}
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* ── Status Box ───────────────────────────────────────── */
+.status-box {
+    display: flex;
+    align-items: flex-start;
+    gap: .7rem;
+    padding: .85rem 1.1rem;
+    border-radius: 12px;
+    font-size: .98rem;
+    line-height: 1.5;
+}
+.status-success {
+    background: #f0fff4;
+    border: 1.5px solid #52c41a;
+    color: #237804;
+}
+.status-info {
+    background: #e8f4ff;
+    border: 1.5px solid #1890ff;
+    color: #0050b3;
+}
+.status-warning {
+    background: #fffbe6;
+    border: 1.5px solid #faad14;
+    color: #874d00;
+}
+.status-error {
+    background: #fff2f0;
+    border: 1.5px solid #ff4d4f;
+    color: #a8071a;
+}
+
+.status-icon {
+    font-size: 1.15rem;
+    flex-shrink: 0;
+    margin-top: .05rem;
+}
+.status-text {
+    flex: 1;
+}
+.video-link {
+    display: inline-block;
+    margin-top: .35rem;
+    font-weight: 600;
+    color: #fb7299;
+}
+
+/* ── Embedded Player ──────────────────────────────────── */
+.player-section {
+    display: flex;
+    flex-direction: column;
+    gap: .5rem;
+}
+.player-label {
+    margin: 0;
+    font-size: .85rem;
+    color: #aaa;
+    text-align: center;
+}
+.player-wrapper {
+    position: relative;
+    padding-top: 56.25%; /* 16:9 */
+    border-radius: 12px;
+    overflow: hidden;
+    background: #000;
+    box-shadow: 0 2px 12px rgba(0,0,0,.12);
+}
+.player-wrapper iframe {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: none;
+}
+
+/* ── Footer hint ──────────────────────────────────────── */
+.footer-hint {
+    text-align: center;
+    font-size: .85rem;
+    color: #aaa;
+    margin: 0;
+    padding: 0 1rem;
+    max-width: 580px;
+}
+
+/* ── Blazor error UI ──────────────────────────────────── */
+#blazor-error-ui {
+    background: #fff3cd;
+    border-top: 2px solid #ffc107;
+    padding: .8rem 1.5rem;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-size: .9rem;
+    color: #856404;
+    display: none;
+    z-index: 9999;
+}
+#blazor-error-ui .reload {
+    color: #856404;
+    font-weight: 600;
+    text-decoration: underline;
+}
+#blazor-error-ui .dismiss {
+    cursor: pointer;
+    margin-left: 1rem;
+    font-size: 1rem;
+}
+
+/* ── Responsive ───────────────────────────────────────── */
+@media (max-width: 600px) {
+    .like-card {
+        padding: 1.6rem 1.2rem 1.4rem;
+        border-radius: 16px;
+    }
+    .like-header h1 {
+        font-size: 1.4rem;
+    }
+}

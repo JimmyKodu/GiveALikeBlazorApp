@@ -1,0 +1,170 @@
+@page "/"
+@rendermode InteractiveServer
+@inject IJSRuntime JS
+
+<PageTitle>B站视频点赞工具</PageTitle>
+
+<div class="like-app">
+    <div class="like-card">
+        <!-- Header -->
+        <div class="like-header">
+            <span class="bili-logo">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="36" height="36" fill="currentColor">
+                    <path d="M18.223 3.086a1.25 1.25 0 0 1 0 1.768L17.08 5.995H19a3 3 0 0 1 3 3v9a3 3 0 0 1-3 3H5a3 3 0 0 1-3-3v-9a3 3 0 0 1 3-3h1.92L5.776 4.854a1.25 1.25 0 1 1 1.768-1.768l2.05 2.05c.021.02.04.042.058.064H14.347c.018-.022.037-.043.058-.064l2.05-2.05a1.25 1.25 0 0 1 1.768 0zM19 8.495H5a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-9a1 1 0 0 0-1-1zm-7.5 2a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5z"/>
+                </svg>
+            </span>
+            <h1>B站视频点赞工具</h1>
+            <p class="subtitle">输入 BV 号，快速打开视频页（需在当前浏览器登录 B 站）</p>
+        </div>
+
+        <!-- Input Form -->
+        <div class="like-form">
+            <div class="input-group-custom">
+                <span class="bv-prefix">BV</span>
+                <input @bind="bvSuffix"
+                       @bind:event="oninput"
+                       @onkeydown="OnKeyDown"
+                       type="text"
+                       class="bv-input @(IsInputInvalid ? "input-invalid" : "")"
+                       placeholder="输入 BV 号，如 1GJ411x7h7"
+                       maxlength="20"
+                       spellcheck="false"
+                       autocomplete="off"
+                       disabled="@IsLoading" />
+            </div>
+
+            @if (IsInputInvalid)
+            {
+                <p class="validation-hint">请输入有效的 BV 号（字母和数字，不少于 6 位）</p>
+            }
+
+            <button class="like-btn @(IsLoading ? "loading" : "")"
+                    @onclick="LikeVideoAsync"
+                    disabled="@(IsLoading || string.IsNullOrWhiteSpace(bvSuffix))">
+                @if (IsLoading)
+                {
+                    <span class="spinner"></span>
+                    <span>正在打开…</span>
+                }
+                else
+                {
+                    <span class="thumb-icon">👍</span>
+                    <span>点赞</span>
+                }
+            </button>
+        </div>
+
+        <!-- Status Display -->
+        @if (LikeResult is not null)
+        {
+            <div class="status-box status-@LikeResult.StatusClass">
+                <span class="status-icon">@LikeResult.Icon</span>
+                <div>
+                    <span class="status-text">@LikeResult.Message</span>
+
+                    @if (LikeResult.ShowLink && !string.IsNullOrEmpty(videoUrl))
+                    {
+                        <br />
+                        <a href="@videoUrl" target="_blank" class="video-link">👉 点此打开视频手动点赞</a>
+                    }
+                </div>
+            </div>
+        }
+
+        <!-- Embedded Player (shown after a valid BV is submitted) -->
+        @if (!string.IsNullOrEmpty(currentBvid))
+        {
+            <div class="player-section">
+                <p class="player-label">视频预览</p>
+                <div class="player-wrapper">
+                    <iframe src="@PlayerUrl"
+                            scrolling="no"
+                            frameborder="0"
+                            allowfullscreen
+                            title="B站视频预览">
+                    </iframe>
+                </div>
+            </div>
+        }
+    </div>
+
+    <p class="footer-hint">
+        💡 由于浏览器跨站限制，本页无法替你自动点击 B 站的点赞按钮。
+        点击后会直接打开视频页，请在弹窗或新标签页中手动点赞。
+    </p>
+</div>
+
+@code {
+    private string bvSuffix = string.Empty;
+    private string currentBvid = string.Empty;
+    private string videoUrl = string.Empty;
+    private bool IsLoading;
+    private bool IsInputInvalid;
+    private LikeStatus? LikeResult;
+
+    private string PlayerUrl =>
+        $"https://player.bilibili.com/player.html?bvid={currentBvid}&autoplay=0&high_quality=1";
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+            await LikeVideoAsync();
+    }
+
+    private async Task LikeVideoAsync()
+    {
+        IsInputInvalid = false;
+        LikeResult = null;
+
+        // ── Normalize BV number ────────────────────────────────────────────
+        var raw = bvSuffix.Trim();
+
+        // Strip leading "BV" / "bv" if the user typed it
+        if (raw.StartsWith("BV", StringComparison.OrdinalIgnoreCase))
+            raw = raw[2..];
+
+        var bvid = "BV" + raw;
+
+        // Validate: alphanumeric, ≥ 6 chars after BV
+        if (!System.Text.RegularExpressions.Regex.IsMatch(raw, @"^[A-Za-z0-9]{6,}$"))
+        {
+            IsInputInvalid = true;
+            return;
+        }
+
+        IsLoading = true;
+        currentBvid = bvid;
+        videoUrl = $"https://www.bilibili.com/video/{bvid}";
+        StateHasChanged();
+
+        try
+        {
+            var result = await JS.InvokeAsync<LikeJsResult>("bilibili.likeVideo", bvid);
+            LikeResult = MapResult(result);
+        }
+        catch (Exception ex)
+        {
+            LikeResult = new LikeStatus("error", "❌", "操作失败：" + ex.Message, ShowLink: true);
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private static LikeStatus MapResult(LikeJsResult result) => result.Status switch
+    {
+        "popup" => new LikeStatus("info", "🪟", result.Message, ShowLink: false),
+        "popup_blocked" => new LikeStatus("warning", "⚠️", result.Message, ShowLink: true),
+        _ => new LikeStatus("error", "❌", result.Message ?? "未知错误", ShowLink: true)
+    };
+
+    private sealed class LikeJsResult
+    {
+        public string Status { get; set; } = string.Empty;
+        public string Message { get; set; } = string.Empty;
+        public string? Url { get; set; }
+    }
+
+    private sealed record LikeStatus(string StatusClass, string Icon, string Message, bool ShowLink);
+}
