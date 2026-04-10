@@ -1,6 +1,7 @@
-﻿@page "/"
+@page "/"
 @rendermode InteractiveServer
 @inject IJSRuntime JS
+@inject GiveALikeBlazorApp.Services.BiliApiClient BiliApi
 
 <PageTitle>B站视频点赞工具</PageTitle>
 
@@ -9,7 +10,6 @@
         <!-- Header -->
         <div class="like-header">
             <span class="bili-logo">
-                <!-- Bilibili-style icon -->
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="36" height="36" fill="currentColor">
                     <path d="M18.223 3.086a1.25 1.25 0 0 1 0 1.768L17.08 5.995H19a3 3 0 0 1 3 3v9a3 3 0 0 1-3 3H5a3 3 0 0 1-3-3v-9a3 3 0 0 1 3-3h1.92L5.776 4.854a1.25 1.25 0 1 1 1.768-1.768l2.05 2.05c.021.02.04.042.058.064H14.347c.018-.022.037-.043.058-.064l2.05-2.05a1.25 1.25 0 0 1 1.768 0zM19 8.495H5a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-9a1 1 0 0 0-1-1zm-7.5 2a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5z"/>
                 </svg>
@@ -27,7 +27,7 @@
                        @onkeydown="OnKeyDown"
                        type="text"
                        class="bv-input @(IsInputInvalid ? "input-invalid" : "")"
-                       placeholder="输入 BV 号后半段，如 1GJ411x7h7"
+                       placeholder="输入 BV 号，如 1GJ411x7h7"
                        maxlength="20"
                        spellcheck="false"
                        autocomplete="off"
@@ -45,7 +45,7 @@
                 @if (IsLoading)
                 {
                     <span class="spinner"></span>
-                    <span>处理中…</span>
+                    <span>正在点赞…</span>
                 }
                 else
                 {
@@ -60,12 +60,15 @@
         {
             <div class="status-box status-@LikeResult.StatusClass">
                 <span class="status-icon">@LikeResult.Icon</span>
-                <span class="status-text">@LikeResult.Message</span>
+                <div>
+                    <span class="status-text">@LikeResult.Message</span>
 
-                @if (LikeResult.ShowLink && !string.IsNullOrEmpty(videoUrl))
-                {
-                    <a href="@videoUrl" target="_blank" class="video-link">点此打开视频</a>
-                }
+                    @if (LikeResult.ShowLink && !string.IsNullOrEmpty(videoUrl))
+                    {
+                        <br />
+                        <a href="@videoUrl" target="_blank" class="video-link">👉 点此打开视频手动点赞</a>
+                    }
+                </div>
             </div>
         }
 
@@ -73,7 +76,7 @@
         @if (!string.IsNullOrEmpty(currentBvid))
         {
             <div class="player-section">
-                <p class="player-label">视频预览（在此页面无法点赞，请使用上方按钮）</p>
+                <p class="player-label">视频预览</p>
                 <div class="player-wrapper">
                     <iframe src="@PlayerUrl"
                             scrolling="no"
@@ -86,9 +89,9 @@
         }
     </div>
 
-    <!-- Footer hint -->
     <p class="footer-hint">
-        💡 使用前请确保当前浏览器已登录 B 站账号。若弹窗在视频页内处于已登录状态，点赞将在弹窗内完成。
+        💡 本工具从本地浏览器的 Cookie 中读取登录信息，直接调用 B 站 API 完成点赞。
+        请确保已在 Edge 或 Chrome 中登录 B 站账号。
     </p>
 </div>
 
@@ -96,8 +99,8 @@
     private string bvSuffix = string.Empty;
     private string currentBvid = string.Empty;
     private string videoUrl = string.Empty;
-    private bool IsLoading = false;
-    private bool IsInputInvalid = false;
+    private bool IsLoading;
+    private bool IsInputInvalid;
     private LikeStatus? LikeResult;
 
     private string PlayerUrl =>
@@ -114,16 +117,16 @@
         IsInputInvalid = false;
         LikeResult = null;
 
-        // Normalize BV number
+        // ── Normalize BV number ────────────────────────────────────────────
         var raw = bvSuffix.Trim();
 
-        // Strip leading "BV" or "bv" if user typed it in the suffix field
+        // Strip leading "BV" / "bv" if the user typed it
         if (raw.StartsWith("BV", StringComparison.OrdinalIgnoreCase))
             raw = raw[2..];
 
         var bvid = "BV" + raw;
 
-        // Basic validation: alphanumeric, at least 6 chars after BV
+        // Validate: alphanumeric, ≥ 6 chars after BV
         if (!System.Text.RegularExpressions.Regex.IsMatch(raw, @"^[A-Za-z0-9]{6,}$"))
         {
             IsInputInvalid = true;
@@ -137,18 +140,28 @@
 
         try
         {
-            var result = await JS.InvokeAsync<LikeJsResult>("bilibili.likeVideo", bvid);
-            LikeResult = MapResult(result);
+            // ── Primary: server-side like via extracted cookies ─────────────
+            var apiResult = await BiliApi.LikeVideoAsync(bvid);
+
+            if (apiResult.Success)
+            {
+                LikeResult = new LikeStatus("success", "✅", apiResult.Message, ShowLink: false);
+                return;
+            }
+
+            // Server-side failed — fall back to popup
+            LikeResult = new LikeStatus("warning", "⚠️",
+                apiResult.Message + "　——　已为您打开视频页面，请手动点赞。",
+                ShowLink: true);
+
+            // Open the video page in a popup for manual like
+            await JS.InvokeVoidAsync("bilibili.openVideoPopup", bvid);
         }
         catch (Exception ex)
         {
-            LikeResult = new LikeStatus
-            {
-                StatusClass = "error",
-                Icon = "❌",
-                Message = "操作失败：" + ex.Message,
-                ShowLink = true
-            };
+            LikeResult = new LikeStatus("error", "❌", "操作失败：" + ex.Message, ShowLink: true);
+
+            try { await JS.InvokeVoidAsync("bilibili.openVideoPopup", bvid); } catch { }
         }
         finally
         {
@@ -156,27 +169,5 @@
         }
     }
 
-    private static LikeStatus MapResult(LikeJsResult r) => r.Status switch
-    {
-        "liked" => new LikeStatus { StatusClass = "success", Icon = "✅", Message = r.Message, ShowLink = false },
-        "popup" => new LikeStatus { StatusClass = "info", Icon = "🪟", Message = r.Message, ShowLink = false },
-        "popup_blocked" => new LikeStatus { StatusClass = "warning", Icon = "⚠️", Message = r.Message, ShowLink = true },
-        _ => new LikeStatus { StatusClass = "error", Icon = "❌", Message = r.Message ?? "未知错误", ShowLink = true }
-    };
-
-    private sealed class LikeJsResult
-    {
-        public string Status { get; set; } = string.Empty;
-        public string Message { get; set; } = string.Empty;
-        public string? Url { get; set; }
-    }
-
-    private sealed class LikeStatus
-    {
-        public string StatusClass { get; set; } = string.Empty;
-        public string Icon { get; set; } = string.Empty;
-        public string Message { get; set; } = string.Empty;
-        public bool ShowLink { get; set; }
-    }
+    private sealed record LikeStatus(string StatusClass, string Icon, string Message, bool ShowLink);
 }
-

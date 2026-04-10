@@ -1,10 +1,15 @@
 using GiveALikeBlazorApp.Components;
+using GiveALikeBlazorApp.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
+
+// Register bilibili services
+builder.Services.AddSingleton<CookieExtractor>();
+builder.Services.AddSingleton<BiliApiClient>();
 
 var app = builder.Build();
 
