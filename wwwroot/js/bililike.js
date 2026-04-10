@@ -1,16 +1,16 @@
 /**
  * B站视频点赞工具 — 客户端辅助模块
  *
- * 主要功能由服务端完成（读取浏览器 Cookie → 调用 B 站 API）。
- * 此脚本仅提供弹窗/新标签页打开视频的 fallback 功能。
+ * 由于浏览器跨站安全限制，本页无法自动操作 bilibili.com 的点赞按钮。
+ * 点击后仅负责打开对应视频页面，点赞需要用户在 B 站页面中手动完成。
  */
 window.bilibili = (function () {
     'use strict';
 
-    /**
-     * 在弹窗中打开视频页面（浏览器已登录 B 站时弹窗内为已登录状态）。
-     * 作为服务端点赞失败时的手动 fallback。
-     */
+    function likeVideo(bvid) {
+        return openVideoPopup(bvid);
+    }
+
     function openVideoPopup(bvid) {
         var url = 'https://www.bilibili.com/video/' + bvid;
 
@@ -24,7 +24,18 @@ window.bilibili = (function () {
         var popup = window.open(url, 'bili_like_' + bvid, features);
         if (popup) {
             popup.focus();
+            return {
+                status: 'popup',
+                message: '已打开视频页，请在新窗口中手动点击点赞按钮。',
+                url: url
+            };
         }
+
+        return {
+            status: 'popup_blocked',
+            message: '弹窗被浏览器拦截，请点击下方链接打开视频后手动点赞。',
+            url: url
+        };
     }
 
     /** 在新标签页中打开视频链接 */
@@ -33,6 +44,7 @@ window.bilibili = (function () {
     }
 
     return {
+        likeVideo: likeVideo,
         openVideoPopup: openVideoPopup,
         openVideoTab: openVideoTab
     };

@@ -1,7 +1,6 @@
 @page "/"
 @rendermode InteractiveServer
 @inject IJSRuntime JS
-@inject GiveALikeBlazorApp.Services.BiliApiClient BiliApi
 
 <PageTitle>B站视频点赞工具</PageTitle>
 
@@ -15,7 +14,7 @@
                 </svg>
             </span>
             <h1>B站视频点赞工具</h1>
-            <p class="subtitle">输入 BV 号，一键点赞（需在当前浏览器登录 B 站）</p>
+            <p class="subtitle">输入 BV 号，快速打开视频页（需在当前浏览器登录 B 站）</p>
         </div>
 
         <!-- Input Form -->
@@ -45,7 +44,7 @@
                 @if (IsLoading)
                 {
                     <span class="spinner"></span>
-                    <span>正在点赞…</span>
+                    <span>正在打开…</span>
                 }
                 else
                 {
@@ -90,8 +89,8 @@
     </div>
 
     <p class="footer-hint">
-        💡 本工具从本地浏览器的 Cookie 中读取登录信息，直接调用 B 站 API 完成点赞。
-        请确保已在 Edge 或 Chrome 中登录 B 站账号。
+        💡 由于浏览器跨站限制，本页无法替你自动点击 B 站的点赞按钮。
+        点击后会直接打开视频页，请在弹窗或新标签页中手动点赞。
     </p>
 </div>
 
@@ -140,33 +139,31 @@
 
         try
         {
-            // ── Primary: server-side like via extracted cookies ─────────────
-            var apiResult = await BiliApi.LikeVideoAsync(bvid);
-
-            if (apiResult.Success)
-            {
-                LikeResult = new LikeStatus("success", "✅", apiResult.Message, ShowLink: false);
-                return;
-            }
-
-            // Server-side failed — fall back to popup
-            LikeResult = new LikeStatus("warning", "⚠️",
-                apiResult.Message + "　——　已为您打开视频页面，请手动点赞。",
-                ShowLink: true);
-
-            // Open the video page in a popup for manual like
-            await JS.InvokeVoidAsync("bilibili.openVideoPopup", bvid);
+            var result = await JS.InvokeAsync<LikeJsResult>("bilibili.likeVideo", bvid);
+            LikeResult = MapResult(result);
         }
         catch (Exception ex)
         {
             LikeResult = new LikeStatus("error", "❌", "操作失败：" + ex.Message, ShowLink: true);
-
-            try { await JS.InvokeVoidAsync("bilibili.openVideoPopup", bvid); } catch { }
         }
         finally
         {
             IsLoading = false;
         }
+    }
+
+    private static LikeStatus MapResult(LikeJsResult result) => result.Status switch
+    {
+        "popup" => new LikeStatus("info", "🪟", result.Message, ShowLink: false),
+        "popup_blocked" => new LikeStatus("warning", "⚠️", result.Message, ShowLink: true),
+        _ => new LikeStatus("error", "❌", result.Message ?? "未知错误", ShowLink: true)
+    };
+
+    private sealed class LikeJsResult
+    {
+        public string Status { get; set; } = string.Empty;
+        public string Message { get; set; } = string.Empty;
+        public string? Url { get; set; }
     }
 
     private sealed record LikeStatus(string StatusClass, string Icon, string Message, bool ShowLink);
